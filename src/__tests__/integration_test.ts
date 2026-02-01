@@ -1,10 +1,11 @@
 import { assertEquals } from '@std/assert'
-import { BRANCHES, REPOS } from '../config.ts'
+import { BRANCHES } from '../config.ts'
 import type { RepoStatus } from '../types.ts'
 
-Deno.test('integration - full workflow simulation', () => {
-  // Simulate the complete workflow
-  const repoStatuses: RepoStatus[] = REPOS.map((repo) => ({
+Deno.test('integration - full workflow simulation with custom repos', () => {
+  // Simulate the complete workflow with user-provided repos
+  const testRepos = ['Apex-EHR/repo1', 'Apex-EHR/repo2', 'Apex-EHR/repo3']
+  const repoStatuses: RepoStatus[] = testRepos.map((repo) => ({
     repo,
     branches: BRANCHES.map((branch) => ({
       branch,
@@ -19,7 +20,7 @@ Deno.test('integration - full workflow simulation', () => {
   }
 
   // Verify all repos are processed
-  assertEquals(repoStatuses.length, REPOS.length)
+  assertEquals(repoStatuses.length, testRepos.length)
 
   // Verify all branches are checked for each repo
   for (const status of repoStatuses) {
@@ -33,16 +34,14 @@ Deno.test('integration - CLI options validation', () => {
     workflowFile: './workflow.yml',
     ghHost: 'github.com',
     verbose: false,
-    interactive: true,
-    noSort: false,
+    nonInteractive: false,
   }
 
   assertEquals(typeof validOptions.dryRun, 'boolean')
   assertEquals(typeof validOptions.workflowFile, 'string')
   assertEquals(typeof validOptions.ghHost, 'string')
   assertEquals(typeof validOptions.verbose, 'boolean')
-  assertEquals(typeof validOptions.interactive, 'boolean')
-  assertEquals(typeof validOptions.noSort, 'boolean')
+  assertEquals(typeof validOptions.nonInteractive, 'boolean')
 })
 
 Deno.test('integration - branch coverage validation', () => {
@@ -50,19 +49,5 @@ Deno.test('integration - branch coverage validation', () => {
 
   for (const branch of branches) {
     assertEquals(BRANCHES.includes(branch), true)
-  }
-})
-
-Deno.test('integration - repo list validation', () => {
-  // Verify all expected repos are in the list
-  const expectedRepos = [
-    'Apex-EHR/apex-auth-service',
-    'Apex-EHR/apex-ecqm-service',
-    'Apex-EHR/apex-ehr-bff',
-    'Apex-EHR/apex-core-service',
-  ]
-
-  for (const repo of expectedRepos) {
-    assertEquals(REPOS.includes(repo), true, `Should include ${repo}`)
   }
 })

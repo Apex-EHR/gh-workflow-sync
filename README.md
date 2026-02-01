@@ -60,21 +60,41 @@ If the workflow file is not found, you'll be prompted to enter a path (in intera
 deno task start -v
 ```
 
+### Non-Interactive Mode (CI/CD)
+
+Skip all prompts and auto-select repos needing workflows:
+
+```bash
+deno task start --no-dry-run --non-interactive
+```
+
 ### Show Help
 
 ```bash
 deno task start --help
 ```
 
+## Workflow
+
+The CLI follows an interactive workflow by default:
+
+1. **Workflow Selection**: Auto-discovers workflow files or prompts for path
+2. **Repository Input**: Enter repositories (comma-separated, format: `owner/repo`)
+3. **Branch Selection**: Choose which branches to target ⚠️ *applies to ALL repos*
+4. **Status Check**: CLI checks all selected repos/branches
+5. **Repository Selection**: Select which repos to actually process
+6. **PR Creation**: Creates PRs for missing workflows (if not dry-run)
+
 ## Features
 
-- **Multi-Repository Support**: Manages 24 Apex-EHR repositories
-- **Branch Coverage**: Checks `dev`, `qa`, `stage`, and `main` branches
-- **Smart Sorting**: Repositories sorted by last commit date (oldest first)
-- **Interactive Selection**: Beautiful checkbox UI for selecting target repos
+- **Interactive Repository Selection**: Users specify which repositories to process
+- **Branch Selection**: Choose which branches to target across all selected repos
+- **Smart Branch Warning**: Clearly warns that branches apply to ALL repositories
 - **Auto-Merge**: Creates PRs and auto-merges them with squash
-- **Dry-Run Mode**: Preview all changes before applying
+- **Dry-Run Mode**: Preview all changes before applying (default)
 - **Graceful Handling**: Skips non-existent branches automatically
+- **Workflow Discovery**: Auto-discovers workflow files in current directory
+- **Semantic Versioning**: Follows SemVer for releases
 
 ## Project Structure
 
@@ -83,12 +103,12 @@ apex-gh-workflow-sync/
 ├── deno.json          # Deno configuration with fmt settings
 ├── main.ts            # CLI entry point
 ├── src/
-│   ├── config.ts      # Repository list and defaults
+│   ├── config.ts      # Default branches and GitHub host
 │   ├── types.ts       # TypeScript interfaces
 │   ├── github.ts      # GitHub CLI wrapper
 │   ├── repo-checker.ts # Repository status checking
 │   ├── sorter.ts      # Commit date sorting
-│   ├── selector.ts    # Interactive UI
+│   ├── selector.ts    # Interactive UI (repos & branches)
 │   ├── pr-creator.ts  # PR creation logic
 │   ├── logger.ts      # Colored logging
 │   ├── workflow-discovery.ts # Workflow file discovery and selection
@@ -103,7 +123,8 @@ apex-gh-workflow-sync/
 │       ├── sorter_test.ts
 │       └── types_test.ts
 └── scripts/
-    └── compile-current.ts  # OS-detecting compile script
+    ├── compile-current.ts  # OS-detecting compile script
+    └── bump-version.ts     # Semantic version bumping
 ```
 
 ## Development
@@ -177,7 +198,7 @@ deno task test:coverage
 
 ### Test Coverage
 
-- **config_test.ts**: Repository list, branches, default values
+- **config_test.ts**: Branches, default values
 - **types_test.ts**: TypeScript interface validation
 - **logger_test.ts**: Colored logging output
 - **repo-checker_test.ts**: Repository status formatting

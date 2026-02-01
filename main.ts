@@ -1,14 +1,12 @@
 #!/usr/bin/env -S deno run --allow-run=gh,git --allow-read --allow-write --allow-env
 
 import { cac } from 'cac'
-import { join } from '@std/path'
-import { BRANCHES, DEFAULT_GH_HOST, REPOS } from './src/config.ts'
+import { DEFAULT_GH_HOST } from './src/config.ts'
 import { checkGhAuthenticated, checkGhInstalled } from './src/github.ts'
 import { clearLine, debug, error, info, setVerbose, success, warn, write } from './src/logger.ts'
 import { createWorkflowPRs } from './src/pr-creator.ts'
-import { checkRepo, formatBranchStatus, formatRepoHeader, formatRepoStatus } from './src/repo-checker.ts'
-import { selectRepos } from './src/selector.ts'
-import { createUnsortedRepos, sortReposByDate } from './src/sorter.ts'
+import { checkRepo, formatBranchStatus, formatRepoHeader } from './src/repo-checker.ts'
+import { promptForRepos, selectBranches, selectRepos } from './src/selector.ts'
 import { selectWorkflow } from './src/workflow-discovery.ts'
 import type { CLIOptions, RepoStatus } from './src/types.ts'
 
@@ -31,53 +29,62 @@ async function main(options: CLIOptions) {
   }
 
   // Validate/prompt for workflow file using discovery
-  const workflowFile = await selectWorkflow(options.interactive, options.workflowFile)
+  const workflowFile = await selectWorkflow(true, options.workflowFile)
   info(`Using workflow file: ${workflowFile}`)
 
   info(`GH_HOST=${options.ghHost}; DRY_RUN=${options.dryRun}`)
 
-  // Get repos (sorted or unsorted)
-  let repoStatuses: RepoStatus[]
-  if (options.noSort) {
-    info('Skipping sort, using default repo order')
-    repoStatuses = createUnsortedRepos()
-  } else {
-    repoStatuses = await sortReposByDate(options.ghHost)
+  // Step 1: Prompt for repositories
+  const inputRepos = await promptForRepos()
+  info(`\nWill process ${inputRepos.length} repositories`)
+
+  // Step 2: Select branches to target
+  const selectedBranches = await selectBranches()
+  if (selectedBranches.length === 0) {
+    warn('No branches selected. Exiting.')
+    Deno.exit(0)
   }
+  info(`Selected branches: ${selectedBranches.join(', ')}`)
 
-  info(`Checking ${repoStatuses.length} repositories...\n`)
+  // Step 3: Check all repos with selected branches
+  const repoStatuses: RepoStatus[] = []
 
-  // Check all repos with in-place status updates
-  for (let i = 0; i < repoStatuses.length; i++) {
-    const repoName = repoStatuses[i].repo
+  info(`\nChecking ${inputRepos.length} repositories...\n`)
+
+  for (const repoName of inputRepos) {
     console.log(formatRepoHeader(repoName))
 
     // Track current branch being checked for in-place updates
     const branchLines = new Map<string, number>()
     let currentLine = 0
 
-    const status = await checkRepo(repoName, options.ghHost, (branch, state) => {
-      if (state === 'checking') {
-        // First time seeing this branch
-        branchLines.set(branch, currentLine)
-        write(formatBranchStatus(branch, state) + '\n')
-        currentLine++
-      } else {
-        // Update existing line - move cursor up and overwrite
-        const lineNum = branchLines.get(branch)
-        if (lineNum !== undefined) {
-          const linesToMove = currentLine - lineNum
-          // Move cursor up to the branch line
-          write(`\x1b[${linesToMove}A`)
-          // Clear line and write new status
-          write('\r\x1b[K' + formatBranchStatus(branch, state))
-          // Move cursor back down
-          write(`\x1b[${linesToMove}B\r`)
+    const status = await checkRepo(
+      repoName,
+      options.ghHost,
+      selectedBranches,
+      (branch, state) => {
+        if (state === 'checking') {
+          // First time seeing this branch
+          branchLines.set(branch, currentLine)
+          write(formatBranchStatus(branch, state) + '\n')
+          currentLine++
+        } else {
+          // Update existing line - move cursor up and overwrite
+          const lineNum = branchLines.get(branch)
+          if (lineNum !== undefined) {
+            const linesToMove = currentLine - lineNum
+            // Move cursor up to the branch line
+            write(`\x1b[${linesToMove}A`)
+            // Clear line and write new status
+            write('\r\x1b[K' + formatBranchStatus(branch, state))
+            // Move cursor back down
+            write(`\x1b[${linesToMove}B\r`)
+          }
         }
-      }
-    })
+      },
+    )
 
-    repoStatuses[i] = status
+    repoStatuses.push(status)
 
     // Print final summary for this repo
     if (status.needsWorkflow) {
@@ -87,19 +94,22 @@ async function main(options: CLIOptions) {
     }
   }
 
-  // Interactive selection if enabled
+  // Step 4: Interactive selection of repos to actually process
   let selectedRepos: string[]
-  if (options.interactive) {
+  if (options.nonInteractive) {
+    // Non-interactive mode: auto-select repos that need workflows
+    selectedRepos = repoStatuses
+      .filter((r) => r.needsWorkflow)
+      .map((r) => r.repo)
+    info(`Auto-selected ${selectedRepos.length} repositories needing workflows`)
+  } else {
+    // Interactive mode: let user choose
     selectedRepos = await selectRepos(repoStatuses)
     if (selectedRepos.length === 0) {
       warn('No repositories selected. Exiting.')
       Deno.exit(0)
     }
     info(`Selected ${selectedRepos.length} repositories`)
-  } else {
-    selectedRepos = repoStatuses
-      .filter((r) => r.needsWorkflow)
-      .map((r) => r.repo)
   }
 
   // Exit if dry run
@@ -143,8 +153,7 @@ cli
   .option('--workflow-file <path>', 'Path to workflow file (auto-discovers if not specified)')
   .option('--gh-host <host>', 'GitHub host', { default: DEFAULT_GH_HOST })
   .option('-v, --verbose', 'Enable verbose output')
-  .option('-i, --interactive', 'Enable interactive repository selection')
-  .option('--no-sort', 'Disable sorting by commit date')
+  .option('-y, --non-interactive', 'Skip interactive prompts (auto-select repos needing workflows)')
   .help()
 
 const parsed = cli.parse(Deno.args)
@@ -155,8 +164,7 @@ const options: CLIOptions = {
   workflowFile: parsed.options['workflow-file'],
   ghHost: parsed.options['gh-host'] || DEFAULT_GH_HOST,
   verbose: parsed.options['verbose'] ?? false,
-  interactive: parsed.options['interactive'] ?? false,
-  noSort: parsed.options['no-sort'] ?? false,
+  nonInteractive: parsed.options['non-interactive'] ?? false,
 }
 
 await main(options)
