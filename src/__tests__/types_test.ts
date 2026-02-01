@@ -54,16 +54,14 @@ Deno.test('types - CLIOptions interface works correctly', () => {
     workflowFile: './workflow.yml',
     ghHost: 'github.com',
     verbose: false,
-    interactive: true,
-    noSort: false,
+    nonInteractive: false,
   }
 
   assertEquals(options.dryRun, true)
   assertEquals(options.workflowFile, './workflow.yml')
   assertEquals(options.ghHost, 'github.com')
   assertEquals(options.verbose, false)
-  assertEquals(options.interactive, true)
-  assertEquals(options.noSort, false)
+  assertEquals(options.nonInteractive, false)
 })
 
 Deno.test('types - PRResult interface with success', () => {

@@ -1,9 +1,9 @@
 import type { RepoStatus } from './types.ts'
-import { REPOS } from './config.ts'
 import { getRepoLastCommitDate } from './github.ts'
 import { debug, info } from './logger.ts'
 
 export async function sortReposByDate(
+  repos: string[],
   hostname: string,
 ): Promise<RepoStatus[]> {
   info('Sorting repos by last commit date (oldest first)...')
@@ -12,7 +12,7 @@ export async function sortReposByDate(
   const repoDates: { repo: string; date: string }[] = []
 
   // Fetch last commit dates for all repos in parallel
-  const datePromises = REPOS.map(async (repo) => {
+  const datePromises = repos.map(async (repo) => {
     const date = await getRepoLastCommitDate(repo, hostname)
     const effectiveDate = date || '9999-12-31T23:59:59Z'
     debug(`${repo}: ${effectiveDate}`)
@@ -39,8 +39,8 @@ export async function sortReposByDate(
   return sortedRepos
 }
 
-export function createUnsortedRepos(): RepoStatus[] {
-  return REPOS.map((repo) => ({
+export function createUnsortedRepos(repos: string[]): RepoStatus[] {
+  return repos.map((repo) => ({
     repo,
     branches: [],
     needsWorkflow: false,

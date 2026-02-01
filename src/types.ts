@@ -15,8 +15,7 @@ export interface CLIOptions {
   workflowFile?: string
   ghHost: string
   verbose: boolean
-  interactive: boolean
-  noSort: boolean
+  nonInteractive: boolean
 }
 
 export interface PRResult {

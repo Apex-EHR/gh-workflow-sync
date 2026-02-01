@@ -1,5 +1,4 @@
 import type { BranchStatus, RepoStatus } from './types.ts'
-import { BRANCHES } from './config.ts'
 import { checkBranchExists, checkWorkflowExists } from './github.ts'
 import { debug, statusColors, write } from './logger.ts'
 import chalk from 'chalk'
@@ -7,13 +6,14 @@ import chalk from 'chalk'
 export async function checkRepo(
   repo: string,
   hostname: string,
+  branchesToCheck: string[],
   onProgress?: (branch: string, status: string) => void,
 ): Promise<RepoStatus> {
   debug(`Checking repo: ${repo}`)
   const branches: BranchStatus[] = []
   let needsWorkflow = false
 
-  for (const branch of BRANCHES) {
+  for (const branch of branchesToCheck) {
     // Show "checking" state
     if (onProgress) {
       onProgress(branch, 'checking')
