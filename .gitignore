@@ -1,0 +1,22 @@
+# Dependencies
+deno.lock
+
+# Compiled binaries
+bin/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/settings.json
+
+# Test coverage
+coverage/
+
+# Environment
+.env
+.env.local
