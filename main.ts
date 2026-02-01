@@ -131,11 +131,13 @@ async function main(options: CLIOptions) {
   success('Completed!')
 }
 
-// Setup cac CLI
+// Setup cac CLI - read version from deno.json
+const { version: VERSION } = JSON.parse(await Deno.readTextFile('./deno.json'))
+
 const cli = cac('apex-gh-workflow-sync')
 
 cli
-  .version('1.0.0')
+  .version(VERSION)
   .option('--dry-run', 'Preview changes without making them', { default: true })
   .option('--no-dry-run', 'Apply changes (disable dry-run)')
   .option('--workflow-file <path>', 'Path to workflow file (auto-discovers if not specified)')

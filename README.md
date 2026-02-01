@@ -187,6 +187,49 @@ deno task test:coverage
 - **github_test.ts**: GitHub CLI integration
 - **integration_test.ts**: End-to-end workflow simulation
 
+## Semantic Versioning
+
+This project follows [Semantic Versioning](https://semver.org/) (SemVer):
+
+- **MAJOR** version: Incompatible API changes
+- **MINOR** version: Added functionality (backwards compatible)
+- **PATCH** version: Backwards compatible bug fixes
+
+### Version Management
+
+The version is defined in `deno.json` and read dynamically by the CLI.
+
+**Bump version:**
+
+```bash
+# Bump patch version (1.0.0 -> 1.0.1)
+deno run --allow-read --allow-write scripts/bump-version.ts patch
+
+# Bump minor version (1.0.0 -> 1.1.0)
+deno run --allow-read --allow-write scripts/bump-version.ts minor
+
+# Bump major version (1.0.0 -> 2.0.0)
+deno run --allow-read --allow-write scripts/bump-version.ts major
+```
+
+**Release process:**
+
+```bash
+# 1. Bump version
+deno run --allow-read --allow-write scripts/bump-version.ts patch
+
+# 2. Commit version bump
+git add deno.json && git commit -m "chore: bump version to x.x.x"
+
+# 3. Create annotated tag
+git tag -a vx.x.x -m "Release vx.x.x"
+
+# 4. Push to GitHub
+git push origin main && git push origin vx.x.x
+```
+
+Pushing a version tag triggers the GitHub Actions workflow to build and create a release.
+
 ## License
 
 MIT
