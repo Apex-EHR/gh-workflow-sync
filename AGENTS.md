@@ -31,9 +31,11 @@ This document describes how we work in the `apex-gh-workflow-sync` repository.
   - `deno fmt`
 
 Notes:
+
 - The CLI is **interactive by default**.
 - In interactive mode, you will be prompted whether to run in dry-run mode (defaults to yes for safety).
-- In non-interactive mode (`-y, --non-interactive`), use `--dry-run` flag to preview changes without applying them.
+- In non-interactive mode (`-y, --non-interactive`), use `--dry-run` flag to preview changes without applying
+  them.
 - Sorting is prompted interactively and **defaults to no sorting**.
 
 ## Testing
@@ -85,6 +87,7 @@ Testing is built on `deno test` and lives under `src/__tests__/`.
   - trailing commas for multi-line only
 
 General guidelines:
+
 - Keep modules small and single-purpose.
 - Prefer typed interfaces in `src/types.ts` rather than ad-hoc objects.
 - Avoid adding new runtime dependencies unless clearly justified.
@@ -117,12 +120,14 @@ We use **strict GitFlow** in this repo.
 All commits must use **Conventional Commit** messages.
 
 Examples:
+
 - `feat: add interactive sorting prompt`
 - `fix: handle missing branch gracefully`
 - `docs: update README for non-interactive mode`
 - `chore: bump version to 1.0.4`
 
 Breaking changes:
+
 - Use `!` and/or `BREAKING CHANGE:` in the body.
 
 ## Boundaries

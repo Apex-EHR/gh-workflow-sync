@@ -1,6 +1,6 @@
 import { checkboxPrompt, confirmPrompt, textPrompt } from './prompts.ts'
 import { BRANCHES } from './config.ts'
-import { getUserOrgs, getReposForOwner } from './github.ts'
+import { getReposForOwner, getUserOrgs } from './github.ts'
 import type { RepoStatus } from './types.ts'
 import { info, warn } from './logger.ts'
 

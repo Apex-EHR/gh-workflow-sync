@@ -65,7 +65,7 @@ The CLI follows an interactive workflow by default:
 1. **Workflow Selection**: Auto-discovers workflow files or prompts for path
 2. **Repository Selection**: Fetches your repos from GitHub and presents checkboxes to select
 3. **Sorting Prompt**: Choose whether to sort repos by last commit date (defaults to no sorting)
-4. **Branch Selection**: Choose which branches to target ⚠️ *applies to ALL repos*
+4. **Branch Selection**: Choose which branches to target ⚠️ _applies to ALL repos_
 5. **Status Check**: CLI checks all selected repos/branches
 6. **Repository Confirmation**: Select which repos to actually process (from those needing workflows)
 7. **Dry-Run Prompt**: Choose whether to preview changes only (defaults to yes)
