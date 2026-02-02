@@ -246,16 +246,15 @@ export async function getUserRepos(hostname: string, limit = 100): Promise<strin
         limit.toString(),
         '--json',
         'nameWithOwner',
-        '--jq',
-        '.[].nameWithOwner',
       ],
     })
     const { success, stdout } = await command.output()
     if (success) {
       const output = new TextDecoder().decode(stdout).trim()
-      const repos = output.split('\n').filter(Boolean)
-      debug(`Found ${repos.length} repos`)
-      return repos
+      const repos = JSON.parse(output) as Array<{ nameWithOwner: string }>
+      const repoNames = repos.map((r) => r.nameWithOwner)
+      debug(`Found ${repoNames.length} repos`)
+      return repoNames
     }
   } catch (e) {
     debug(`Failed to fetch repos: ${e}`)
