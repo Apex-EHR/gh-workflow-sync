@@ -30,29 +30,13 @@ deno task start
 deno task start --no-dry-run
 ```
 
-### Interactive Mode
-
-Select repositories via checkbox UI:
-
-```bash
-deno task start --interactive
-```
-
-### Disable Sorting
-
-Use default repo order instead of sorting by commit date:
-
-```bash
-deno task start --no-sort
-```
-
 ### Custom Workflow File
 
 ```bash
 deno task start --workflow-file ./path/to/workflow.yml
 ```
 
-If the workflow file is not found, you'll be prompted to enter a path (in interactive mode).
+If the workflow file is not found, you'll be prompted to enter a path.
 
 ### Verbose Output
 
@@ -79,11 +63,12 @@ deno task start --help
 The CLI follows an interactive workflow by default:
 
 1. **Workflow Selection**: Auto-discovers workflow files or prompts for path
-2. **Repository Input**: Enter repositories (comma-separated, format: `owner/repo`)
-3. **Branch Selection**: Choose which branches to target ⚠️ *applies to ALL repos*
-4. **Status Check**: CLI checks all selected repos/branches
-5. **Repository Selection**: Select which repos to actually process
-6. **PR Creation**: Creates PRs for missing workflows (if not dry-run)
+2. **Sorting Prompt**: Choose whether to sort repos by last commit date (defaults to no sorting)
+3. **Repository Input**: Enter repositories (comma-separated, format: `owner/repo`)
+4. **Branch Selection**: Choose which branches to target ⚠️ *applies to ALL repos*
+5. **Status Check**: CLI checks all selected repos/branches
+6. **Repository Selection**: Select which repos to actually process
+7. **PR Creation**: Creates PRs for missing workflows (if not dry-run)
 
 ## Features
 
