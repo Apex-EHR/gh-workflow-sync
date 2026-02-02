@@ -232,3 +232,33 @@ export async function commitAndPush(
     return false
   }
 }
+
+export async function getUserRepos(hostname: string, limit = 100): Promise<string[]> {
+  debug(`Fetching repos for authenticated user from ${hostname}`)
+  try {
+    const command = new Deno.Command('gh', {
+      args: [
+        'repo',
+        'list',
+        '--hostname',
+        hostname,
+        '--limit',
+        limit.toString(),
+        '--json',
+        'nameWithOwner',
+        '--jq',
+        '.[].nameWithOwner',
+      ],
+    })
+    const { success, stdout } = await command.output()
+    if (success) {
+      const output = new TextDecoder().decode(stdout).trim()
+      const repos = output.split('\n').filter(Boolean)
+      debug(`Found ${repos.length} repos`)
+      return repos
+    }
+  } catch (e) {
+    debug(`Failed to fetch repos: ${e}`)
+  }
+  return []
+}

@@ -37,7 +37,7 @@ async function main(options: CLIOptions) {
   info(`GH_HOST=${options.ghHost}; DRY_RUN=${options.dryRun}`)
 
   // Step 1: Prompt for repositories
-  let inputRepos = await promptForRepos()
+  let inputRepos = await promptForRepos(options.ghHost)
   info(`\nWill process ${inputRepos.length} repositories`)
 
   // Step 2: Prompt for sorting (defaults to no sorting)

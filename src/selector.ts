@@ -1,12 +1,46 @@
 import { checkboxPrompt, confirmPrompt, textPrompt } from './prompts.ts'
 import { BRANCHES } from './config.ts'
+import { getUserRepos } from './github.ts'
 import type { RepoStatus } from './types.ts'
 import { info, warn } from './logger.ts'
 
 /**
- * Prompt user to input repository names (comma-separated)
+ * Fetch and prompt user to select repositories from their GitHub account
  */
-export async function promptForRepos(): Promise<string[]> {
+export async function promptForRepos(hostname: string): Promise<string[]> {
+  info('Fetching your repositories from GitHub...')
+
+  const repos = await getUserRepos(hostname)
+
+  if (repos.length === 0) {
+    warn('No repositories found. Falling back to manual entry.')
+    return promptForReposManual()
+  }
+
+  const options = repos.map((repo) => ({
+    name: repo,
+    value: repo,
+    checked: false,
+  }))
+
+  const selected = await checkboxPrompt({
+    message: 'Select repositories to process (use arrow keys, space to toggle)',
+    options,
+    hint: '[number] toggle, a (all), n (none), d (done)',
+  })
+
+  if (selected.length === 0) {
+    warn('No repositories selected. Falling back to manual entry.')
+    return promptForReposManual()
+  }
+
+  return selected
+}
+
+/**
+ * Fallback: Prompt user to manually input repository names
+ */
+async function promptForReposManual(): Promise<string[]> {
   info('Enter repository names to process (comma-separated, format: owner/repo):')
   info('Example: Apex-EHR/apex-auth-service, Apex-EHR/apex-ehr-bff')
 
