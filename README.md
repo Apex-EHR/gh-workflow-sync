@@ -16,34 +16,26 @@ cd /home/jagged/work/apex-ehr/tools/apex-gh-workflow-sync
 
 ## Usage
 
-### Dry Run (Default)
+### Interactive Mode (Default)
 
-Preview changes without making them:
+Run the CLI with interactive prompts (you'll be asked about dry-run, sorting, repos, etc.):
 
 ```bash
 deno task start
 ```
 
-### Apply Changes
+### Non-Interactive Mode (CI/CD)
+
+Skip all prompts and apply changes directly:
 
 ```bash
-deno task start --no-dry-run
+deno task start --non-interactive
 ```
 
-### Interactive Mode
-
-Select repositories via checkbox UI:
+Preview changes without applying in non-interactive mode:
 
 ```bash
-deno task start --interactive
-```
-
-### Disable Sorting
-
-Use default repo order instead of sorting by commit date:
-
-```bash
-deno task start --no-sort
+deno task start --dry-run --non-interactive
 ```
 
 ### Custom Workflow File
@@ -52,20 +44,12 @@ deno task start --no-sort
 deno task start --workflow-file ./path/to/workflow.yml
 ```
 
-If the workflow file is not found, you'll be prompted to enter a path (in interactive mode).
+If the workflow file is not found, you'll be prompted to enter a path.
 
 ### Verbose Output
 
 ```bash
 deno task start -v
-```
-
-### Non-Interactive Mode (CI/CD)
-
-Skip all prompts and auto-select repos needing workflows:
-
-```bash
-deno task start --no-dry-run --non-interactive
 ```
 
 ### Show Help
@@ -79,11 +63,13 @@ deno task start --help
 The CLI follows an interactive workflow by default:
 
 1. **Workflow Selection**: Auto-discovers workflow files or prompts for path
-2. **Repository Input**: Enter repositories (comma-separated, format: `owner/repo`)
-3. **Branch Selection**: Choose which branches to target ⚠️ *applies to ALL repos*
-4. **Status Check**: CLI checks all selected repos/branches
-5. **Repository Selection**: Select which repos to actually process
-6. **PR Creation**: Creates PRs for missing workflows (if not dry-run)
+2. **Repository Selection**: Fetches your repos from GitHub and presents checkboxes to select
+3. **Sorting Prompt**: Choose whether to sort repos by last commit date (defaults to no sorting)
+4. **Branch Selection**: Choose which branches to target ⚠️ *applies to ALL repos*
+5. **Status Check**: CLI checks all selected repos/branches
+6. **Repository Confirmation**: Select which repos to actually process (from those needing workflows)
+7. **Dry-Run Prompt**: Choose whether to preview changes only (defaults to yes)
+8. **PR Creation**: Creates PRs for missing workflows (if not dry-run)
 
 ## Features
 

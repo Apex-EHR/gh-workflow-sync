@@ -1,4 +1,4 @@
-import { checkbox, input } from '@inquirer/prompts'
+import { checkbox, confirm, input } from '@inquirer/prompts'
 
 /**
  * Prompt for text input with validation
@@ -10,6 +10,19 @@ export async function textPrompt(options: {
   return input({
     message: options.message,
     validate: options.validate,
+  })
+}
+
+/**
+ * Confirm yes/no prompt
+ */
+export async function confirmPrompt(options: {
+  message: string
+  defaultValue?: boolean
+}): Promise<boolean> {
+  return confirm({
+    message: options.message,
+    default: options.defaultValue ?? false,
   })
 }
 

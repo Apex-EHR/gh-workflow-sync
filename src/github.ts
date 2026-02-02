@@ -232,3 +232,68 @@ export async function commitAndPush(
     return false
   }
 }
+
+export async function getUserOrgs(limit = 100): Promise<string[]> {
+  debug(`Fetching organizations for authenticated user`)
+  try {
+    const command = new Deno.Command('gh', {
+      args: [
+        'org',
+        'list',
+        '--limit',
+        limit.toString(),
+      ],
+    })
+    const { success, stdout, stderr } = await command.output()
+    if (!success) {
+      const err = new TextDecoder().decode(stderr)
+      debug(`gh org list failed: ${err}`)
+      return []
+    }
+    const output = new TextDecoder().decode(stdout).trim()
+    // Parse output like "Showing 1 of 1 organization\n\nApex-EHR"
+    const lines = output.split('\n').filter((line) => line && !line.startsWith('Showing'))
+    const orgs = lines.map((line) => line.trim()).filter(Boolean)
+    debug(`Found ${orgs.length} orgs: ${orgs.join(', ')}`)
+    return orgs
+  } catch (e) {
+    debug(`Failed to fetch orgs: ${e}`)
+  }
+  return []
+}
+
+export async function getReposForOwner(owner: string, limit = 100): Promise<string[]> {
+  debug(`Fetching repos for owner: ${owner}`)
+  try {
+    const command = new Deno.Command('gh', {
+      args: [
+        'repo',
+        'list',
+        owner,
+        '--limit',
+        limit.toString(),
+        '--json',
+        'nameWithOwner',
+      ],
+    })
+    const { success, stdout, stderr } = await command.output()
+    if (!success) {
+      const err = new TextDecoder().decode(stderr)
+      debug(`gh repo list failed: ${err}`)
+      return []
+    }
+    const output = new TextDecoder().decode(stdout).trim()
+    debug(`gh repo list output length: ${output.length}`)
+    if (!output || output === '[]') {
+      debug('Empty output from gh repo list')
+      return []
+    }
+    const repos = JSON.parse(output) as Array<{ nameWithOwner: string }>
+    const repoNames = repos.map((r) => r.nameWithOwner)
+    debug(`Found ${repoNames.length} repos`)
+    return repoNames
+  } catch (e) {
+    debug(`Failed to fetch repos: ${e}`)
+  }
+  return []
+}
