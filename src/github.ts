@@ -233,15 +233,13 @@ export async function commitAndPush(
   }
 }
 
-export async function getUserRepos(hostname: string, limit = 100): Promise<string[]> {
-  debug(`Fetching repos for authenticated user from ${hostname}`)
+export async function getUserRepos(_hostname: string, limit = 100): Promise<string[]> {
+  debug(`Fetching repos for authenticated user`)
   try {
     const command = new Deno.Command('gh', {
       args: [
         'repo',
         'list',
-        '--hostname',
-        hostname,
         '--limit',
         limit.toString(),
         '--json',
@@ -255,8 +253,8 @@ export async function getUserRepos(hostname: string, limit = 100): Promise<strin
       return []
     }
     const output = new TextDecoder().decode(stdout).trim()
-    debug(`gh repo list output: ${output.substring(0, 200)}...`)
-    if (!output) {
+    debug(`gh repo list output length: ${output.length}`)
+    if (!output || output === '[]') {
       debug('Empty output from gh repo list')
       return []
     }
