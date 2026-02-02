@@ -67,6 +67,7 @@ export async function createWorkflowPRs(
       success(`Merged PR #${prNumber} for ${repo}@${branch}`)
     } else {
       warn(`Failed to merge PR #${prNumber} for ${repo}@${branch}`)
+      return { repo, branch, success: false, prNumber, error: 'Failed to merge PR' }
     }
 
     return { repo, branch, success: true, prNumber }

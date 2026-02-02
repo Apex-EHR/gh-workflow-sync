@@ -1,5 +1,11 @@
 import { debug, error } from './logger.ts'
 
+function maybeHostnameArgs(hostname: string): string[] {
+  // gh CLI defaults to github.com; passing --hostname github.com can fail on some gh versions.
+  if (!hostname || hostname === 'github.com') return []
+  return ['--hostname', hostname]
+}
+
 export async function checkGhInstalled(): Promise<boolean> {
   try {
     const command = new Deno.Command('gh', { args: ['--version'] })
@@ -115,8 +121,7 @@ export async function createPR(
       args: [
         'pr',
         'create',
-        '--hostname',
-        hostname,
+        ...maybeHostnameArgs(hostname),
         '--repo',
         repo,
         '--base',
@@ -129,14 +134,24 @@ export async function createPR(
         body,
       ],
     })
-    const { success, stdout } = await command.output()
-    if (success) {
-      const output = new TextDecoder().decode(stdout)
-      const match = output.match(/\/pull\/(\d+)$/m)
-      const prNumber = match ? parseInt(match[1], 10) : null
-      debug(`Created PR #${prNumber} for ${repo}`)
-      return prNumber
+    const { success, stdout, stderr } = await command.output()
+    const output = new TextDecoder().decode(stdout).trim()
+    const err = new TextDecoder().decode(stderr).trim()
+    if (!success) {
+      error(`Failed to create PR for ${repo}@${baseBranch}: ${err || output}`)
+      return null
     }
+
+    // gh usually prints a PR URL like https://github.com/org/repo/pull/123
+    const match = output.match(/\/pull\/(\d+)/)
+    const prNumber = match ? parseInt(match[1], 10) : null
+    if (!prNumber) {
+      error(`Failed to parse PR number for ${repo}@${baseBranch}: ${output}`)
+      return null
+    }
+
+    debug(`Created PR #${prNumber} for ${repo}`)
+    return prNumber
   } catch (e) {
     error(`Failed to create PR for ${repo}: ${e}`)
   }
@@ -155,17 +170,22 @@ export async function mergePR(
         'pr',
         'merge',
         prNumber.toString(),
-        '--hostname',
-        hostname,
+        ...maybeHostnameArgs(hostname),
         '--repo',
         repo,
         '--squash',
         '--delete-branch',
       ],
     })
-    const { success } = await command.output()
-    debug(`Merged PR #${prNumber} for ${repo}: ${success}`)
-    return success
+    const { success, stdout, stderr } = await command.output()
+    if (!success) {
+      const out = new TextDecoder().decode(stdout).trim()
+      const err = new TextDecoder().decode(stderr).trim()
+      error(`Failed to merge PR #${prNumber} for ${repo}: ${err || out}`)
+      return false
+    }
+    debug(`Merged PR #${prNumber} for ${repo}: true`)
+    return true
   } catch (e) {
     error(`Failed to merge PR #${prNumber} for ${repo}: ${e}`)
     return false

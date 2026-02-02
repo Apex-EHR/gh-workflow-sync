@@ -156,20 +156,30 @@ async function main(options: CLIOptions) {
   // Apply changes
   if (selectedRepos.length > 0) {
     info(`\nWill create PRs for ${selectedRepos.length} repositories`)
+    const failures: { repo: string; branch: string; error?: string }[] = []
     // Process selected repos
     for (const repoName of selectedRepos) {
       const repoStatus = repoStatuses.find((r) => r.repo === repoName)!
       for (const branch of repoStatus.branches) {
         if (branch.status === 'missing') {
-          await createWorkflowPRs(
+          const result = await createWorkflowPRs(
             repoName,
             branch.branch,
             workflowFile,
             options.ghHost,
             isDryRun,
           )
+          if (!result.success) {
+            failures.push({ repo: result.repo, branch: result.branch, error: result.error })
+            warn(`Failed for ${result.repo}@${result.branch}: ${result.error ?? 'unknown error'}`)
+          }
         }
       }
+    }
+
+    if (failures.length > 0) {
+      error(`\n${failures.length} operation(s) failed.`)
+      Deno.exit(1)
     }
   }
 
