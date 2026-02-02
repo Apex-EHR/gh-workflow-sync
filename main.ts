@@ -6,7 +6,8 @@ import { checkGhAuthenticated, checkGhInstalled } from './src/github.ts'
 import { clearLine, debug, error, info, setVerbose, success, warn, write } from './src/logger.ts'
 import { createWorkflowPRs } from './src/pr-creator.ts'
 import { checkRepo, formatBranchStatus, formatRepoHeader } from './src/repo-checker.ts'
-import { promptForRepos, selectBranches, selectRepos } from './src/selector.ts'
+import { promptForRepos, promptForSorting, selectBranches, selectRepos } from './src/selector.ts'
+import { sortReposByDate } from './src/sorter.ts'
 import { selectWorkflow } from './src/workflow-discovery.ts'
 import type { CLIOptions, RepoStatus } from './src/types.ts'
 
@@ -35,10 +36,19 @@ async function main(options: CLIOptions) {
   info(`GH_HOST=${options.ghHost}; DRY_RUN=${options.dryRun}`)
 
   // Step 1: Prompt for repositories
-  const inputRepos = await promptForRepos()
+  let inputRepos = await promptForRepos()
   info(`\nWill process ${inputRepos.length} repositories`)
 
-  // Step 2: Select branches to target
+  // Step 2: Prompt for sorting (defaults to no sorting)
+  const shouldSort = await promptForSorting()
+  if (shouldSort && !options.nonInteractive) {
+    info('Sorting repositories by last commit date...')
+    const sortedRepoStatuses = await sortReposByDate(inputRepos, options.ghHost)
+    inputRepos = sortedRepoStatuses.map((r) => r.repo)
+    info(`Sorted ${inputRepos.length} repositories`)
+  }
+
+  // Step 3: Select branches to target
   const selectedBranches = await selectBranches()
   if (selectedBranches.length === 0) {
     warn('No branches selected. Exiting.')
@@ -46,7 +56,7 @@ async function main(options: CLIOptions) {
   }
   info(`Selected branches: ${selectedBranches.join(', ')}`)
 
-  // Step 3: Check all repos with selected branches
+  // Step 4: Check all repos with selected branches
   const repoStatuses: RepoStatus[] = []
 
   info(`\nChecking ${inputRepos.length} repositories...\n`)
@@ -94,7 +104,7 @@ async function main(options: CLIOptions) {
     }
   }
 
-  // Step 4: Interactive selection of repos to actually process
+  // Step 5: Interactive selection of repos to actually process
   let selectedRepos: string[]
   if (options.nonInteractive) {
     // Non-interactive mode: auto-select repos that need workflows

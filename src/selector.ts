@@ -1,4 +1,4 @@
-import { checkboxPrompt, textPrompt } from './prompts.ts'
+import { checkboxPrompt, confirmPrompt, textPrompt } from './prompts.ts'
 import { BRANCHES } from './config.ts'
 import type { RepoStatus } from './types.ts'
 import { info, warn } from './logger.ts'
@@ -24,6 +24,17 @@ export async function promptForRepos(): Promise<string[]> {
   })
 
   return input.split(',').map((r) => r.trim()).filter(Boolean)
+}
+
+/**
+ * Prompt whether to sort repositories by last commit date
+ * Defaults to no sorting (false)
+ */
+export async function promptForSorting(): Promise<boolean> {
+  return confirmPrompt({
+    message: 'Sort repositories by last commit date (oldest first)?',
+    defaultValue: false,
+  })
 }
 
 /**
