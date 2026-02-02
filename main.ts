@@ -6,7 +6,7 @@ import { checkGhAuthenticated, checkGhInstalled } from './src/github.ts'
 import { clearLine, debug, error, info, setVerbose, success, warn, write } from './src/logger.ts'
 import { createWorkflowPRs } from './src/pr-creator.ts'
 import { checkRepo, formatBranchStatus, formatRepoHeader } from './src/repo-checker.ts'
-import { promptForRepos, promptForSorting, selectBranches, selectRepos } from './src/selector.ts'
+import { promptForRepos, promptForSorting, selectBranches } from './src/selector.ts'
 import { confirmPrompt } from './src/prompts.ts'
 import { sortReposByDate } from './src/sorter.ts'
 import { selectWorkflow } from './src/workflow-discovery.ts'
@@ -105,7 +105,7 @@ async function main(options: CLIOptions) {
     }
   }
 
-  // Step 5: Interactive selection of repos to actually process
+  // Step 5: Filter to repos needing workflows and confirm processing
   // Step 6: Prompt for dry-run (interactive mode) or use flag (non-interactive)
   // Step 7: Apply changes (if not dry-run)
   let selectedRepos: string[]
@@ -116,13 +116,22 @@ async function main(options: CLIOptions) {
       .map((r) => r.repo)
     info(`Auto-selected ${selectedRepos.length} repositories needing workflows`)
   } else {
-    // Interactive mode: let user choose
-    selectedRepos = await selectRepos(repoStatuses)
+    // Interactive mode: filter to repos needing workflows from original selection
+    selectedRepos = repoStatuses
+      .filter((r) => r.needsWorkflow && inputRepos.includes(r.repo))
+      .map((r) => r.repo)
+
     if (selectedRepos.length === 0) {
-      warn('No repositories selected. Exiting.')
+      info('No repositories need workflows. Nothing to do.')
       Deno.exit(0)
     }
-    info(`Selected ${selectedRepos.length} repositories`)
+
+    info(`\n${selectedRepos.length} repositories need workflows:`)
+    for (const repo of selectedRepos) {
+      const status = repoStatuses.find((r) => r.repo === repo)!
+      const missingBranches = status.branches.filter((b) => b.status === 'missing').map((b) => b.branch)
+      info(`  - ${repo} (branches: ${missingBranches.join(', ')})`)
+    }
   }
 
   // Determine if this is a dry run
