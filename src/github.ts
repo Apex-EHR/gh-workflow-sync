@@ -248,14 +248,22 @@ export async function getUserRepos(hostname: string, limit = 100): Promise<strin
         'nameWithOwner',
       ],
     })
-    const { success, stdout } = await command.output()
-    if (success) {
-      const output = new TextDecoder().decode(stdout).trim()
-      const repos = JSON.parse(output) as Array<{ nameWithOwner: string }>
-      const repoNames = repos.map((r) => r.nameWithOwner)
-      debug(`Found ${repoNames.length} repos`)
-      return repoNames
+    const { success, stdout, stderr } = await command.output()
+    if (!success) {
+      const err = new TextDecoder().decode(stderr)
+      debug(`gh repo list failed: ${err}`)
+      return []
     }
+    const output = new TextDecoder().decode(stdout).trim()
+    debug(`gh repo list output: ${output.substring(0, 200)}...`)
+    if (!output) {
+      debug('Empty output from gh repo list')
+      return []
+    }
+    const repos = JSON.parse(output) as Array<{ nameWithOwner: string }>
+    const repoNames = repos.map((r) => r.nameWithOwner)
+    debug(`Found ${repoNames.length} repos`)
+    return repoNames
   } catch (e) {
     debug(`Failed to fetch repos: ${e}`)
   }
