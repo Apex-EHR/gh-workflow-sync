@@ -1,23 +1,58 @@
 import { checkboxPrompt, confirmPrompt, textPrompt } from './prompts.ts'
 import { BRANCHES } from './config.ts'
-import { getUserRepos } from './github.ts'
+import { getUserOrgs, getReposForOwner } from './github.ts'
 import type { RepoStatus } from './types.ts'
 import { info, warn } from './logger.ts'
 
 /**
- * Fetch and prompt user to select repositories from their GitHub account
+ * Prompt user to select account/organization, then select repositories
  */
-export async function promptForRepos(hostname: string): Promise<string[]> {
-  info('Fetching your repositories from GitHub...')
+export async function promptForRepos(_hostname: string): Promise<string[]> {
+  // Step 1: Fetch user's orgs
+  info('Fetching your organizations from GitHub...')
+  const orgs = await getUserOrgs()
 
-  const repos = await getUserRepos(hostname)
+  // Build list of owners: personal account + orgs
+  const ownerOptions: { name: string; value: string }[] = [
+    { name: 'Your personal account', value: '@user' },
+    ...orgs.map((org) => ({ name: `Organization: ${org}`, value: org })),
+  ]
 
-  if (repos.length === 0) {
+  if (ownerOptions.length === 1) {
+    info('No organizations found, using personal account')
+  }
+
+  // Step 2: Prompt to select owner
+  const selectedOwners = await checkboxPrompt({
+    message: 'Select account(s)/organization(s) to list repositories from',
+    options: ownerOptions.map((o) => ({ ...o, checked: false })),
+    hint: '[number] toggle, a (all), n (none), d (done)',
+  })
+
+  if (selectedOwners.length === 0) {
+    warn('No account/organization selected. Falling back to manual entry.')
+    return promptForReposManual()
+  }
+
+  // Step 3: Fetch repos from selected owners
+  info(`Fetching repositories from ${selectedOwners.length} source(s)...`)
+  const allRepos: string[] = []
+
+  for (const owner of selectedOwners) {
+    const repos = await getReposForOwner(owner === '@user' ? '' : owner)
+    allRepos.push(...repos)
+  }
+
+  if (allRepos.length === 0) {
     warn('No repositories found. Falling back to manual entry.')
     return promptForReposManual()
   }
 
-  const options = repos.map((repo) => ({
+  // Sort and dedupe repos
+  const uniqueRepos = [...new Set(allRepos)].sort()
+
+  // Step 4: Prompt to select repos
+  const repoOptions = uniqueRepos.map((repo) => ({
     name: repo,
     value: repo,
     checked: false,
@@ -25,7 +60,7 @@ export async function promptForRepos(hostname: string): Promise<string[]> {
 
   const selected = await checkboxPrompt({
     message: 'Select repositories to process (use arrow keys, space to toggle)',
-    options,
+    options: repoOptions,
     hint: '[number] toggle, a (all), n (none), d (done)',
   })
 
