@@ -16,18 +16,26 @@ cd /home/jagged/work/apex-ehr/tools/apex-gh-workflow-sync
 
 ## Usage
 
-### Dry Run (Default)
+### Interactive Mode (Default)
 
-Preview changes without making them:
+Run the CLI with interactive prompts (you'll be asked about dry-run, sorting, repos, etc.):
 
 ```bash
 deno task start
 ```
 
-### Apply Changes
+### Non-Interactive Mode (CI/CD)
+
+Skip all prompts and apply changes directly:
 
 ```bash
-deno task start --no-dry-run
+deno task start --non-interactive
+```
+
+Preview changes without applying in non-interactive mode:
+
+```bash
+deno task start --dry-run --non-interactive
 ```
 
 ### Custom Workflow File
@@ -42,14 +50,6 @@ If the workflow file is not found, you'll be prompted to enter a path.
 
 ```bash
 deno task start -v
-```
-
-### Non-Interactive Mode (CI/CD)
-
-Skip all prompts and auto-select repos needing workflows:
-
-```bash
-deno task start --no-dry-run --non-interactive
 ```
 
 ### Show Help
@@ -68,7 +68,8 @@ The CLI follows an interactive workflow by default:
 4. **Branch Selection**: Choose which branches to target ⚠️ *applies to ALL repos*
 5. **Status Check**: CLI checks all selected repos/branches
 6. **Repository Selection**: Select which repos to actually process
-7. **PR Creation**: Creates PRs for missing workflows (if not dry-run)
+7. **Dry-Run Prompt**: Choose whether to preview changes only (defaults to yes)
+8. **PR Creation**: Creates PRs for missing workflows (if not dry-run)
 
 ## Features
 

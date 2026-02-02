@@ -4,12 +4,15 @@ This document describes how we work in the `apex-gh-workflow-sync` repository.
 
 ## Commands
 
-- **Run the CLI (default: dry-run)**
+- **Run the CLI (interactive mode)**
   - `deno task start`
-- **Apply changes (disable dry-run)**
-  - `deno task start --no-dry-run`
-- **Non-interactive mode (CI/CD / automation)**
-  - `deno task start --no-dry-run --non-interactive`
+  - You will be prompted whether to run in dry-run mode (default: yes)
+- **Apply changes (interactive)**
+  - `deno task start` then select "No" when asked about dry-run
+- **Dry-run in non-interactive mode (CI/CD preview)**
+  - `deno task start --dry-run --non-interactive`
+- **Apply changes in non-interactive mode (CI/CD)**
+  - `deno task start --non-interactive`
 - **Verbose logging**
   - `deno task start -v`
 - **Dev/watch mode**
@@ -28,7 +31,9 @@ This document describes how we work in the `apex-gh-workflow-sync` repository.
   - `deno fmt`
 
 Notes:
-- The CLI is interactive by default.
+- The CLI is **interactive by default**.
+- In interactive mode, you will be prompted whether to run in dry-run mode (defaults to yes for safety).
+- In non-interactive mode (`-y, --non-interactive`), use `--dry-run` flag to preview changes without applying them.
 - Sorting is prompted interactively and **defaults to no sorting**.
 
 ## Testing

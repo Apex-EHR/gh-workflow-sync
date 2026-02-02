@@ -7,6 +7,7 @@ import { clearLine, debug, error, info, setVerbose, success, warn, write } from 
 import { createWorkflowPRs } from './src/pr-creator.ts'
 import { checkRepo, formatBranchStatus, formatRepoHeader } from './src/repo-checker.ts'
 import { promptForRepos, promptForSorting, selectBranches, selectRepos } from './src/selector.ts'
+import { confirmPrompt } from './src/prompts.ts'
 import { sortReposByDate } from './src/sorter.ts'
 import { selectWorkflow } from './src/workflow-discovery.ts'
 import type { CLIOptions, RepoStatus } from './src/types.ts'
@@ -105,6 +106,8 @@ async function main(options: CLIOptions) {
   }
 
   // Step 5: Interactive selection of repos to actually process
+  // Step 6: Prompt for dry-run (interactive mode) or use flag (non-interactive)
+  // Step 7: Apply changes (if not dry-run)
   let selectedRepos: string[]
   if (options.nonInteractive) {
     // Non-interactive mode: auto-select repos that need workflows
@@ -122,14 +125,27 @@ async function main(options: CLIOptions) {
     info(`Selected ${selectedRepos.length} repositories`)
   }
 
+  // Determine if this is a dry run
+  let isDryRun: boolean
+  if (options.nonInteractive) {
+    // Non-interactive: use the flag value (default false = apply changes)
+    isDryRun = options.dryRun
+  } else {
+    // Interactive: prompt user (default true = dry-run for safety)
+    isDryRun = await confirmPrompt({
+      message: 'Preview changes only (dry-run)?',
+      defaultValue: true,
+    })
+  }
+
   // Exit if dry run
-  if (options.dryRun) {
+  if (isDryRun) {
     info('DRY-RUN mode: No changes were made.')
     Deno.exit(0)
   }
 
-  // Confirm before making changes if not in dry-run
-  if (!options.dryRun && selectedRepos.length > 0) {
+  // Apply changes
+  if (selectedRepos.length > 0) {
     info(`\nWill create PRs for ${selectedRepos.length} repositories`)
     // Process selected repos
     for (const repoName of selectedRepos) {
@@ -141,7 +157,7 @@ async function main(options: CLIOptions) {
             branch.branch,
             workflowFile,
             options.ghHost,
-            options.dryRun,
+            isDryRun,
           )
         }
       }
@@ -158,23 +174,27 @@ const cli = cac('apex-gh-workflow-sync')
 
 cli
   .version(VERSION)
-  .option('--dry-run', 'Preview changes without making them', { default: true })
-  .option('--no-dry-run', 'Apply changes (disable dry-run)')
+  .option('--dry-run', 'Preview changes without making them (default in interactive mode)')
   .option('--workflow-file <path>', 'Path to workflow file (auto-discovers if not specified)')
-  .option('--gh-host <host>', 'GitHub host', { default: DEFAULT_GH_HOST })
-  .option('-v, --verbose', 'Enable verbose output')
-  .option('-y, --non-interactive', 'Skip interactive prompts (auto-select repos needing workflows)')
+  .option('--gh-host <host>', 'GitHub Enterprise host (default: github.com)', { default: DEFAULT_GH_HOST })
+  .option('-v, --verbose', 'Enable verbose debug output')
+  .option('-y, --non-interactive', 'Skip all prompts and auto-select repos needing workflows')
   .help()
 
 const parsed = cli.parse(Deno.args)
 
 // Parse options
+const dryRunFlag = parsed.options['dry-run'] ?? false
+const nonInteractive = parsed.options['non-interactive'] ?? false
+
+// In interactive mode: we'll prompt for dry-run later (default to true for safety)
+// In non-interactive mode: use the flag value (default false - will apply changes)
 const options: CLIOptions = {
-  dryRun: parsed.options['no-dry-run'] ? false : parsed.options['dry-run'] ?? true,
+  dryRun: dryRunFlag,
   workflowFile: parsed.options['workflow-file'],
   ghHost: parsed.options['gh-host'] || DEFAULT_GH_HOST,
   verbose: parsed.options['verbose'] ?? false,
-  nonInteractive: parsed.options['non-interactive'] ?? false,
+  nonInteractive: nonInteractive,
 }
 
 await main(options)
