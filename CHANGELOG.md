@@ -10,6 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
 
+- Surface PR create/merge failures and avoid hostname issues
+
+- Add comprehensive error handling to all git/gh commands
+
+
+### Documentation
+
+
+- Update CHANGELOG.md for v1.0.5
+
+
+### Miscellaneous Tasks
+
+
+- Bump version to 1.0.6
+
+
+### Bug Fixes
+
+
 - Avoid docker git-cliff action in release workflow
 
 
