@@ -44,11 +44,14 @@ export async function getRepoLastCommitDate(
         '.commit.committer.date',
       ],
     })
-    const { success, stdout } = await command.output()
+    const { success, stdout, stderr } = await command.output()
     if (success) {
       const date = new TextDecoder().decode(stdout).trim()
       debug(`Last commit date for ${repo}: ${date}`)
       return date
+    } else {
+      const err = new TextDecoder().decode(stderr).trim()
+      debug(`gh api failed for ${repo}: ${err}`)
     }
   } catch (e) {
     debug(`Failed to get last commit date for ${repo}: ${e}`)
@@ -211,7 +214,11 @@ export async function cloneRepo(
         tmpdir,
       ],
     })
-    const { success } = await command.output()
+    const { success, stderr } = await command.output()
+    if (!success) {
+      const err = new TextDecoder().decode(stderr).trim()
+      error(`Git clone failed for ${repo}@${branch}: ${err}`)
+    }
     debug(`Cloned ${repo}@${branch}: ${success}`)
     return success
   } catch (e) {
@@ -231,20 +238,34 @@ export async function commitAndPush(
     const addCommand = new Deno.Command('git', {
       args: ['-C', tmpdir, 'add', '.'],
     })
-    await addCommand.output()
+    const addResult = await addCommand.output()
+    if (!addResult.success) {
+      const err = new TextDecoder().decode(addResult.stderr).trim()
+      error(`Git add failed: ${err}`)
+      return false
+    }
 
     // Commit
     const commitCommand = new Deno.Command('git', {
       args: ['-C', tmpdir, 'commit', '-m', message],
     })
-    await commitCommand.output()
+    const commitResult = await commitCommand.output()
+    if (!commitResult.success) {
+      const err = new TextDecoder().decode(commitResult.stderr).trim()
+      error(`Git commit failed: ${err}`)
+      return false
+    }
 
     // Push to new branch
     const headBranch = `automation/pr-merged-notification/${branch}`
     const pushCommand = new Deno.Command('git', {
       args: ['-C', tmpdir, 'push', 'origin', `HEAD:${headBranch}`],
     })
-    const { success } = await pushCommand.output()
+    const { success, stderr } = await pushCommand.output()
+    if (!success) {
+      const err = new TextDecoder().decode(stderr).trim()
+      error(`Git push failed: ${err}`)
+    }
     debug(`Pushed to ${headBranch}: ${success}`)
     return success
   } catch (e) {
