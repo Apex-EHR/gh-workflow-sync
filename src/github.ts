@@ -1,5 +1,11 @@
 import { debug, error } from './logger.ts'
 
+function maybeHostnameArgs(hostname: string): string[] {
+  // gh CLI defaults to github.com; passing --hostname github.com can fail on some gh versions.
+  if (!hostname || hostname === 'github.com') return []
+  return ['--hostname', hostname]
+}
+
 export async function checkGhInstalled(): Promise<boolean> {
   try {
     const command = new Deno.Command('gh', { args: ['--version'] })
@@ -38,11 +44,14 @@ export async function getRepoLastCommitDate(
         '.commit.committer.date',
       ],
     })
-    const { success, stdout } = await command.output()
+    const { success, stdout, stderr } = await command.output()
     if (success) {
       const date = new TextDecoder().decode(stdout).trim()
       debug(`Last commit date for ${repo}: ${date}`)
       return date
+    } else {
+      const err = new TextDecoder().decode(stderr).trim()
+      debug(`gh api failed for ${repo}: ${err}`)
     }
   } catch (e) {
     debug(`Failed to get last commit date for ${repo}: ${e}`)
@@ -115,8 +124,7 @@ export async function createPR(
       args: [
         'pr',
         'create',
-        '--hostname',
-        hostname,
+        ...maybeHostnameArgs(hostname),
         '--repo',
         repo,
         '--base',
@@ -129,14 +137,24 @@ export async function createPR(
         body,
       ],
     })
-    const { success, stdout } = await command.output()
-    if (success) {
-      const output = new TextDecoder().decode(stdout)
-      const match = output.match(/\/pull\/(\d+)$/m)
-      const prNumber = match ? parseInt(match[1], 10) : null
-      debug(`Created PR #${prNumber} for ${repo}`)
-      return prNumber
+    const { success, stdout, stderr } = await command.output()
+    const output = new TextDecoder().decode(stdout).trim()
+    const err = new TextDecoder().decode(stderr).trim()
+    if (!success) {
+      error(`Failed to create PR for ${repo}@${baseBranch}: ${err || output}`)
+      return null
     }
+
+    // gh usually prints a PR URL like https://github.com/org/repo/pull/123
+    const match = output.match(/\/pull\/(\d+)/)
+    const prNumber = match ? parseInt(match[1], 10) : null
+    if (!prNumber) {
+      error(`Failed to parse PR number for ${repo}@${baseBranch}: ${output}`)
+      return null
+    }
+
+    debug(`Created PR #${prNumber} for ${repo}`)
+    return prNumber
   } catch (e) {
     error(`Failed to create PR for ${repo}: ${e}`)
   }
@@ -155,17 +173,22 @@ export async function mergePR(
         'pr',
         'merge',
         prNumber.toString(),
-        '--hostname',
-        hostname,
+        ...maybeHostnameArgs(hostname),
         '--repo',
         repo,
         '--squash',
         '--delete-branch',
       ],
     })
-    const { success } = await command.output()
-    debug(`Merged PR #${prNumber} for ${repo}: ${success}`)
-    return success
+    const { success, stdout, stderr } = await command.output()
+    if (!success) {
+      const out = new TextDecoder().decode(stdout).trim()
+      const err = new TextDecoder().decode(stderr).trim()
+      error(`Failed to merge PR #${prNumber} for ${repo}: ${err || out}`)
+      return false
+    }
+    debug(`Merged PR #${prNumber} for ${repo}: true`)
+    return true
   } catch (e) {
     error(`Failed to merge PR #${prNumber} for ${repo}: ${e}`)
     return false
@@ -191,7 +214,11 @@ export async function cloneRepo(
         tmpdir,
       ],
     })
-    const { success } = await command.output()
+    const { success, stderr } = await command.output()
+    if (!success) {
+      const err = new TextDecoder().decode(stderr).trim()
+      error(`Git clone failed for ${repo}@${branch}: ${err}`)
+    }
     debug(`Cloned ${repo}@${branch}: ${success}`)
     return success
   } catch (e) {
@@ -211,20 +238,34 @@ export async function commitAndPush(
     const addCommand = new Deno.Command('git', {
       args: ['-C', tmpdir, 'add', '.'],
     })
-    await addCommand.output()
+    const addResult = await addCommand.output()
+    if (!addResult.success) {
+      const err = new TextDecoder().decode(addResult.stderr).trim()
+      error(`Git add failed: ${err}`)
+      return false
+    }
 
     // Commit
     const commitCommand = new Deno.Command('git', {
       args: ['-C', tmpdir, 'commit', '-m', message],
     })
-    await commitCommand.output()
+    const commitResult = await commitCommand.output()
+    if (!commitResult.success) {
+      const err = new TextDecoder().decode(commitResult.stderr).trim()
+      error(`Git commit failed: ${err}`)
+      return false
+    }
 
     // Push to new branch
     const headBranch = `automation/pr-merged-notification/${branch}`
     const pushCommand = new Deno.Command('git', {
       args: ['-C', tmpdir, 'push', 'origin', `HEAD:${headBranch}`],
     })
-    const { success } = await pushCommand.output()
+    const { success, stderr } = await pushCommand.output()
+    if (!success) {
+      const err = new TextDecoder().decode(stderr).trim()
+      error(`Git push failed: ${err}`)
+    }
     debug(`Pushed to ${headBranch}: ${success}`)
     return success
   } catch (e) {
